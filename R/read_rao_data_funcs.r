@@ -96,7 +96,7 @@ get_bin_size <- function(res){
 #' expected data.
 #'
 #' @importFrom readr read_tsv
-#' @importFrom dplyr bind_cols left_join rename "%>%"
+#' @importFrom dplyr bind_cols left_join rename "%>%" data_frame
 #'
 #' @export
 read_data_from_dir <- function(dir, bin_size, read_expected = FALSE){
