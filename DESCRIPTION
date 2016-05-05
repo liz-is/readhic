@@ -4,8 +4,11 @@ Title: Read HiC data from Rao, Huntley et al. 2014
 Version: 0.1
 Date: 2016-05-05
 Author: Liz Ing-Simmons
-Maintainer: liz.ing-simmons12@csc.mrc.ac.uk
-Description: A collection of functions to read the HiC data from Rao, Huntley
-  et al. 2014 into R as an InteractionSet object and do some simple processing.
+Maintainer: Liz Ing-Simmons <liz.ing-simmons12@csc.mrc.ac.uk>
+Description: A collection of functions to read the HiC data from Rao, Huntley et
+    al. 2014 into R as an InteractionSet object and do some simple processing.
+Depends: InteractionSet
+Imports: dplyr, stringr, readr, GenomicRanges, IRanges
 License: MIT License
 LazyData: TRUE
+RoxygenNote: 5.0.1
