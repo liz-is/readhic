@@ -15,6 +15,7 @@
 #' different distances. Default: FALSE.
 #' @param seqinfo If you don't provide seqinfo, you will get warnings when
 #' combining data from different chromosome. Default: NULL.
+#' @param show_progress Whether to show progress bar for file reading. Default: TRUE.
 #' @return An InteractionSet object containing data for the specified resolution
 #' and chromosomes.
 #'
@@ -23,7 +24,7 @@
 #' @export
 read_rao_huntley_data <- function(dir = ".", resolution = "1Mb", mapq = 30,
                                   chr = "chr1", inter_chr = FALSE,
-                          read_expected = FALSE, seqinfo = NULL){
+                          read_expected = FALSE, seqinfo = NULL, show_progress = TRUE){
   if (length(dir) != 1) {stop("Please provide a single data directory.")}
   if (length(resolution) > 1) {stop("Can only read in a single resolution at a time.")}
   if (length(mapq) > 1) {stop("Please choose a single mapq value.")}
@@ -43,7 +44,9 @@ read_rao_huntley_data <- function(dir = ".", resolution = "1Mb", mapq = 30,
 
  islist <- lapply(chr, function(chr){
     d <- paste(dir, resolution, chr, mapq, "/", sep = "/")
-    df_list <- read_data_from_dir(dir = d, bin_size = bin_size, read_expected = read_expected)
+    df_list <- read_data_from_dir(dir = d, bin_size = bin_size,
+                                  read_expected = read_expected,
+                                  show_progress = show_progress)
 
     iset <- make_is_from_data(raw_df = df_list$raw, norm_df = df_list$norm,
                               exp_df = df_list$exp,
@@ -92,6 +95,7 @@ get_bin_size <- function(res){
 #' @param bin_size Numeric bin size
 #' @param read_expected Whether to read in vectors of expected interactions at
 #' different distances. Default: FALSE.
+#' @param show_progress Whether to show progress bar for file reading. Default: TRUE.
 #' @return A list of data frames, with raw data, normalisation vectors, and
 #' expected data.
 #'
@@ -99,7 +103,7 @@ get_bin_size <- function(res){
 #' @importFrom dplyr bind_cols left_join rename "%>%" data_frame
 #'
 #' @export
-read_data_from_dir <- function(dir, bin_size, read_expected = FALSE){
+read_data_from_dir <- function(dir, bin_size, read_expected = FALSE, show_progress = TRUE){
   message("Reading data from: ", dir)
   lf <- list.files(dir)
 
@@ -115,12 +119,13 @@ read_data_from_dir <- function(dir, bin_size, read_expected = FALSE){
   exp_files <- paste0(dir, lf[exp_idx])
 
   #read raw data
-  raw_df <- read_tsv(rawfile, col_names = c("start1", "start2", "obs"), col_types = "iid")
+  raw_df <- read_tsv(rawfile, col_names = c("start1", "start2", "obs"),
+                     col_types = "iid", progress = show_progress)
 
   #read normalisation vectors
   norm_list <- lapply(norm_files, function(f){
     col_name <- strsplit(basename(f), "\\.")[[1]][2]
-    read_tsv(f, col_names = col_name, col_types = "d")
+    read_tsv(f, col_names = col_name, col_types = "d", progress = show_progress)
   })
   norm_df <- bind_cols(norm_list)
 
@@ -139,7 +144,7 @@ read_data_from_dir <- function(dir, bin_size, read_expected = FALSE){
   if (read_expected){
     exp_list <- lapply(exp_files, function(f){
       col_name <- strsplit(basename(f), "\\.")[[1]][2]
-      read_tsv(f, col_names = col_name, col_types = "d")
+      read_tsv(f, col_names = col_name, col_types = "d", progress = show_progress)
     })
     exp_df <- bind_cols(exp_list)
     exp_df$distance <- (1:nrow(exp_df)-1)*bin_size

@@ -4,7 +4,8 @@
 \alias{read_data_from_dir}
 \title{Read data from given directory into a list of data frames}
 \usage{
-read_data_from_dir(dir, bin_size, read_expected = FALSE)
+read_data_from_dir(dir, bin_size, read_expected = FALSE,
+  show_progress = TRUE)
 }
 \arguments{
 \item{dir}{Directory with data.}
@@ -13,6 +14,8 @@ read_data_from_dir(dir, bin_size, read_expected = FALSE)
 
 \item{read_expected}{Whether to read in vectors of expected interactions at
 different distances. Default: FALSE.}
+
+\item{show_progress}{Whether to show progress bar for file reading. Default: TRUE.}
 }
 \value{
 A list of data frames, with raw data, normalisation vectors, and

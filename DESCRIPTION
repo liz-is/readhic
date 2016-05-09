@@ -9,6 +9,6 @@ Description: A collection of functions to read the HiC data from Rao, Huntley et
     al. 2014 into R as an InteractionSet object and do some simple processing.
 Depends: InteractionSet
 Imports: dplyr, stringr, readr, GenomicRanges, IRanges
-License: MIT License
+License: MIT + file LICENSE
 LazyData: TRUE
 RoxygenNote: 5.0.1

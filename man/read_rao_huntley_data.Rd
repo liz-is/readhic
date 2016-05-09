@@ -6,7 +6,7 @@
 \usage{
 read_rao_huntley_data(dir = ".", resolution = "1Mb", mapq = 30,
   chr = "chr1", inter_chr = FALSE, read_expected = FALSE,
-  seqinfo = NULL)
+  seqinfo = NULL, show_progress = TRUE)
 }
 \arguments{
 \item{dir}{Data directory containing subdirectories with different resolutions.
@@ -26,6 +26,8 @@ different distances. Default: FALSE.}
 
 \item{seqinfo}{If you don't provide seqinfo, you will get warnings when
 combining data from different chromosome. Default: NULL.}
+
+\item{show_progress}{Whether to show progress bar for file reading. Default: TRUE.}
 }
 \value{
 An InteractionSet object containing data for the specified resolution
