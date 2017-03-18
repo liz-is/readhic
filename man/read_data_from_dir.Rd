@@ -25,4 +25,3 @@ expected data.
 Read data from a given directory, for a single chromosome and resolution,
 into a list of data frames.
 }
-

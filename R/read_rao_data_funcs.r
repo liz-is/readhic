@@ -1,5 +1,4 @@
 ######################## FUNCTIONS TO HELP READ RAO DATA ###############################
-
 #' Read data from a directory
 #'
 #' Read data from the correct subdirectory of a given directory, depending on desired
@@ -72,7 +71,7 @@ read_rao_huntley_data <- function(dir = ".", resolution = "1Mb", mapq = 30,
 read_rao_huntley_data_interchr <- function(dir = ".", resolution = "1Mb", mapq = 30,
                                            chr = c("chr1","chr2"), show_progress = TRUE){
   if ((length(chr) != 2) | (chr[1] == chr[2])) {stop("Please provide two different chromosomes in a vector!")}
-  chr = mixedsort(chr) ## makes sure the lower chr number is first
+  chr = gtools::mixedsort(chr) ## makes sure the lower chr number is first
   bin_size <- get_bin_size(resolution)
   resolution <- paste0(resolution, "_resolution_interchromosomal")
   
@@ -216,7 +215,7 @@ read_data_from_dir_interchr <- function(dir, bin_size, show_progress = TRUE){
   
   rawfile <- paste0(dir, lf[obs_idx])
   norm_files <- paste0(dir, lf[norm_idx])
-  norm_files <- mixedsort(norm_files) ## sort so chrA is always above chrB
+  norm_files <- gtools::mixedsort(norm_files) ## sort so chrA is always above chrB
   ## if interchromosomal normalization vectors available, use them
   inter_norm_ixs <- grep("INTER",norm_files)
   if(length(inter_norm_ixs) > 0){
@@ -289,8 +288,7 @@ make_is_from_data <- function(raw_df, norm_df, exp_df = NULL, chr, bin_size, seq
     chr_A_end <- tail(which(norm_df$Source == "chrA"),n=1) ## this is where bins reset
     regions <- GRanges(seqnames = c(rep(chr[1],chr_A_end),rep(chr[2] , nrow(norm_df) - chr_A_end)),
                        ranges = IRanges(start = norm_df$bin_start, width = bin_size),
-                       mcols = as.data.frame(norm_df[,norm_cols]),
-                       seqinfo = seqinfo)
+                       mcols = as.data.frame(norm_df[,norm_cols]))
     names(mcols(regions)) <- gsub("mcols.", "", names(mcols(regions)))
   }
   else{
@@ -368,4 +366,4 @@ normalise_hic <- function(iset, obs = "RAWobserved", norm = NULL){
 }
 
 inter_1_2_50kb <- read_rao_huntley_data_interchr(dir = "/home/kaj/Projects_data/nextgen_functional_genomics/GM12878_combined_interchromosomal/",
-                                                 resolution = "50kb",chr = c("chr5","chr20"), mapq=0)
+                                                 resolution = "50kb",chr = c("chr1","chr2"), mapq=0)

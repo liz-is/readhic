@@ -22,4 +22,3 @@ An InteractionSet object with additional assays holding normalised data.
 Normalise observed assays by multiplying them by the appropriate values for
 the interacting bins. Result = observed /(anchor 1 value * anchor 2 value)
 }
-

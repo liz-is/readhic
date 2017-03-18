@@ -5,7 +5,7 @@
 \title{Make InteractionSet object from a list of data frames}
 \usage{
 make_is_from_data(raw_df, norm_df, exp_df = NULL, chr, bin_size,
-  seqinfo = NULL)
+  seqinfo = NULL, interchr = FALSE)
 }
 \arguments{
 \item{raw_df}{data.frame of raw data with bin start positions, sizes, bin numbers, and
@@ -32,4 +32,3 @@ columns for the `regions()` of the object.
 Makes an InteractionSet object from a list of data frames containing raw
 counts between bins, normalisation vectors, and (optional) expected data.
 }
-
