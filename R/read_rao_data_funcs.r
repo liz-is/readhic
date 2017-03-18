@@ -1,3 +1,4 @@
+######################## FUNCTIONS TO HELP READ RAO DATA ###############################
 
 #' Read data from a directory
 #'
@@ -9,10 +10,6 @@
 #' @param resolution Resolution to read in, e.g. 1Mb, 10kb. Default: 1Mb.
 #' @param mapq MAPQ threshold to use. Only 0 and 30 are supported. Default: 30
 #' @param chr Chromosomes to read in. Default: chr1.
-#' @param inter_chr NOT YET IMPLEMENTED. Whether to read in inter-chromosomal
-#' interactions. Default: FALSE.
-#' @param read_expected Whether to read in vectors of expected interactions at
-#' different distances. Default: FALSE.
 #' @param seqinfo If you don't provide seqinfo, you will get warnings when
 #' combining data from different chromosome. Default: NULL.
 #' @param show_progress Whether to show progress bar for file reading. Default: TRUE.
@@ -23,15 +20,15 @@
 #'
 #' @export
 read_rao_huntley_data <- function(dir = ".", resolution = "1Mb", mapq = 30,
-                                  chr = "chr1", inter_chr = FALSE,
-                          read_expected = FALSE, seqinfo = NULL, show_progress = TRUE){
+                                  chr = "chr1",read_expected = FALSE, 
+                                  seqinfo = NULL, show_progress = TRUE){
   if (length(dir) != 1) {stop("Please provide a single data directory.")}
   if (length(resolution) > 1) {stop("Can only read in a single resolution at a time.")}
   if (length(mapq) > 1) {stop("Please choose a single mapq value.")}
-
+  
   bin_size <- get_bin_size(resolution)
   resolution <- paste0(resolution, "_resolution_intrachromosomal")
-
+  
   if (mapq == 0){
     mapq <- "MAPQG0"
   } else if (mapq == 30){
@@ -39,28 +36,66 @@ read_rao_huntley_data <- function(dir = ".", resolution = "1Mb", mapq = 30,
   } else {
     stop("MAPQ should be one of 0 or 30")
   }
-
+  
   message("Will read data for ", length(chr), " chromosomes.")
-
- islist <- lapply(chr, function(chr){
+  
+  islist <- lapply(chr, function(chr){
     d <- paste(dir, resolution, chr, mapq, "/", sep = "/")
     df_list <- read_data_from_dir(dir = d, bin_size = bin_size,
                                   read_expected = read_expected,
                                   show_progress = show_progress)
-
+    
     iset <- make_is_from_data(raw_df = df_list$raw, norm_df = df_list$norm,
                               exp_df = df_list$exp,
                               chr, bin_size, seqinfo = seqinfo)
     return(iset)
   })
+  
+  iset_all <- do.call("c", islist)
+  return(iset_all)
+  
+}
 
- if (inter_chr){
 
- }
+#' Interchromosomal version of the main read function
+#' Doesn't support expected reads!
 
- iset_all <- do.call("c", islist)
- return(iset_all)
-
+#' @param dir Data directory containing subdirectories with different resolutions.
+#' Default: current working directory.
+#' @param resolution Resolution to read in, e.g. 1Mb, 10kb. Default: 1Mb.
+#' @param mapq MAPQ threshold to use. Only 0 and 30 are supported. Default: 30
+#' @param chr Chromosomes to read in. Default: c("chr1","chr2"). Only takes pairs of chromosomes, for more combinations
+#' call the function with an apply-like approach.
+#' @param show_progress Whether to show progress bar for file reading. Default: TRUE.
+#' @return An InteractionSet object containing data for the specified resolution
+#' and chromosomes.
+#' @importFrom gtools mixedsort
+read_rao_huntley_data_interchr <- function(dir = ".", resolution = "1Mb", mapq = 30,
+                                           chr = c("chr1","chr2"), show_progress = TRUE){
+  if ((length(chr) != 2) | (chr[1] == chr[2])) {stop("Please provide two different chromosomes in a vector!")}
+  chr = mixedsort(chr) ## makes sure the lower chr number is first
+  bin_size <- get_bin_size(resolution)
+  resolution <- paste0(resolution, "_resolution_interchromosomal")
+  
+  if (mapq == 0){
+    mapq <- "MAPQG0"
+  } else if (mapq == 30){
+    mapq <- "MAPQGE30"
+  } else {
+    stop("MAPQ should be one of 0 or 30")
+  }
+  
+  message("Will read data for ", length(chr), " chromosomes.")
+  
+  ### Read interchromosome data and create InteractionSet
+  d <- paste(dir, resolution, paste0(chr,collapse="_"), mapq, "/", sep = "/")
+  df_list <- read_data_from_dir_interchr(dir = d, bin_size = bin_size,
+                                         show_progress = show_progress)
+  iset_inter <- make_is_from_data(raw_df = df_list$raw, norm_df = df_list$norm,
+                                  chr = chr, bin_size = bin_size, seqinfo = seqinfo, interchr = TRUE)
+  
+  return(iset_inter)
+  
 }
 
 #' Get bin size from string resolution
@@ -80,7 +115,7 @@ get_bin_size <- function(res){
   if(!multiplier %in% names(lookup)) {
     stop("Unknown multiplier for bin size, should be: ",
          paste(names(lookup), collapse = ","), ". Found: ", multiplier)
-    }
+  }
   multiplier <- lookup[[multiplier]]
   bin_size <- multiplier * pre
   return(bin_size)
@@ -106,41 +141,41 @@ get_bin_size <- function(res){
 read_data_from_dir <- function(dir, bin_size, read_expected = FALSE, show_progress = TRUE){
   message("Reading data from: ", dir)
   lf <- list.files(dir)
-
+  
   obs_idx <- grepl("RAWobserved", lf)
   norm_idx <- grepl("norm", lf)
   exp_idx <- grepl("expected", lf)
-
+  
   if (sum(obs_idx) > 1){stop("More than one 'RAWobserved' file found in this directory!")}
   if (sum(obs_idx) == 0){stop("No 'RAWobserved' file found in this directory!")}
-
+  
   rawfile <- paste0(dir, lf[obs_idx])
   norm_files <- paste0(dir, lf[norm_idx])
   exp_files <- paste0(dir, lf[exp_idx])
-
+  
   #read raw data
   raw_df <- read_tsv(rawfile, col_names = c("start1", "start2", "obs"),
                      col_types = "iid", progress = show_progress)
-
+  
   #read normalisation vectors
   norm_list <- lapply(norm_files, function(f){
     col_name <- strsplit(basename(f), "\\.")[[1]][2]
     read_tsv(f, col_names = col_name, col_types = "d", progress = show_progress)
   })
   norm_df <- bind_cols(norm_list)
-
+  
   # connect start positions with bin numbers to link raw / norm data
   bin_df <- data_frame(bin_start = seq(from = 0, by = bin_size, length.out = nrow(norm_df)),
                        bin_num = seq_along(bin_start))
-
+  
   raw_df <- raw_df %>%
     left_join(bin_df, by = c("start1" = "bin_start")) %>%
     dplyr::rename(bin_num1 = bin_num) %>%
     left_join(bin_df, by = c("start2" = "bin_start")) %>%
     dplyr::rename(bin_num2 = bin_num)
-
+  
   norm_df <- bind_cols(bin_df, norm_df)
-
+  
   if (read_expected){
     exp_list <- lapply(exp_files, function(f){
       col_name <- strsplit(basename(f), "\\.")[[1]][2]
@@ -151,8 +186,74 @@ read_data_from_dir <- function(dir, bin_size, read_expected = FALSE, show_progre
   } else {
     exp_df <- NULL
   }
-
+  
   return(list(raw = raw_df, norm = norm_df, exp = exp_df))
+}
+
+#' Read data from given directory into a list of data frames
+#'
+#' Read data from a given directory, for two different chromosomes and resolution,
+#' into a list of data frames.
+#'
+#' @param dir Directory with data.
+#' @param bin_size Numeric bin size
+#' @param show_progress Whether to show progress bar for file reading. Default: TRUE.
+#' @return A list of data frames, with raw data, normalisation vectors.
+#'
+#' @importFrom readr read_tsv
+#' @importFrom dplyr bind_cols left_join rename "%>%" data_frame
+#'
+#' @export
+read_data_from_dir_interchr <- function(dir, bin_size, show_progress = TRUE){
+  
+  message("Reading data from: ", dir)
+  lf <- list.files(dir)
+  
+  obs_idx <- grepl("RAWobserved", lf)
+  norm_idx <- grepl("norm", lf)
+  
+  if (sum(obs_idx) > 1){stop("More than one 'RAWobserved' file found in this directory!")}
+  if (sum(obs_idx) == 0){stop("No 'RAWobserved' file found in this directory!")}
+  
+  rawfile <- paste0(dir, lf[obs_idx])
+  norm_files <- paste0(dir, lf[norm_idx])
+  norm_files <- mixedsort(norm_files) ## sort so chrA is always above chrB
+  ## if interchromosomal normalization vectors available, use them
+  inter_norm_ixs <- grep("INTER",norm_files)
+  if(length(inter_norm_ixs) > 0){
+    norm_files <- norm_files[inter_norm_ixs]
+    message("Intrachromosomal normalization files found, using them!")
+  }
+  
+  #read raw data
+  raw_df <- read_tsv(rawfile, col_names = c("start1", "start2", "obs"),
+                     col_types = "iid", progress = show_progress)
+  #read normalisation vectors
+  norm_list <- lapply(norm_files, function(f){
+    col_name <- strsplit(basename(f), "\\.")[[1]][2]
+    read_tsv(f, col_names = col_name, col_types = "d", progress = show_progress)
+  })
+  ## stack norm vectors on top of each other and use later offset indexing to track which chr is it
+  KR = rbind(norm_list[[1]],norm_list[[3]])
+  VC = rbind(norm_list[[2]],norm_list[[4]])
+  norm_df = bind_cols(KR,VC)
+  
+  # connect start positions with bin numbers to link raw / norm data for chrA and chrB
+  bin_df_A <- data_frame(bin_start = seq(from = 0, by = bin_size, length.out = nrow(norm_list[[1]])),
+                         bin_num = seq_along(bin_start))
+  bin_df_B <- data_frame(bin_start = seq(from = 0, by = bin_size, length.out = nrow(norm_list[[3]])),
+                         bin_num = seq_along(bin_start))
+  bin_df <- rbind(bin_df_A,bin_df_B)
+  raw_df <- raw_df %>%
+    left_join(bin_df_A, by = c("start1" = "bin_start")) %>%
+    dplyr::rename(bin_num1 = bin_num) %>%
+    left_join(bin_df_B, by = c("start2" = "bin_start")) %>%
+    dplyr::rename(bin_num2 = bin_num)
+  
+  chr_col <- data.frame("Source"=c(rep("chrA",nrow(bin_df_A)),rep("chrB",nrow(bin_df_B)))) #to keep track of which bins belong where
+  norm_df <- bind_cols(bin_df, norm_df, chr_col)
+  
+  return(list(raw = raw_df, norm = norm_df))
 }
 
 #' Make InteractionSet object from a list of data frames
@@ -178,21 +279,34 @@ read_data_from_dir <- function(dir, bin_size, read_expected = FALSE, show_progre
 #' @import InteractionSet
 #'
 #' @export
-make_is_from_data <- function(raw_df, norm_df, exp_df = NULL, chr, bin_size, seqinfo = NULL){
+make_is_from_data <- function(raw_df, norm_df, exp_df = NULL, chr, bin_size, seqinfo = NULL, interchr = FALSE){
   #get metadata columns for regions
-  norm_cols <- names(norm_df)[-match("bin_start", names(norm_df))]
+  norm_cols <- names(norm_df)[-grep("bin_start|bin_num|Source", names(norm_df))]
   #make regions (bins) GRanges
-  regions <- GRanges(seqnames = chr,
-                    ranges = IRanges(start = norm_df$bin_start, width = bin_size),
-                    mcols = as.data.frame(norm_df[,norm_cols]),
-                    seqinfo = seqinfo)
-  names(mcols(regions)) <- gsub("mcols.", "", names(mcols(regions)))
-
-  #make interactions and InteractionSet
-  ints <- GInteractions(anchor1 = raw_df$bin_num1, anchor2 = raw_df$bin_num2,
-                regions = regions)
+  chr_A_end <- 0 ## needed for offsetting the indices in GInteractions call
+  if(interchr){
+    chr_A_end <- tail(which(norm_df$Source == "chrA"),n=1) ## this is where bins reset
+    regions <- GRanges(seqnames = c(rep(chr[1],chr_A_end),rep(chr[2] , nrow(norm_df) - chr_A_end)),
+                       ranges = IRanges(start = norm_df$bin_start, width = bin_size),
+                       mcols = as.data.frame(norm_df[,norm_cols]),
+                       seqinfo = seqinfo)
+    names(mcols(regions)) <- gsub("mcols.", "", names(mcols(regions)))
+  }
+  else{
+    regions <- GRanges(seqnames = chr,
+                       ranges = IRanges(start = norm_df$bin_start, width = bin_size),
+                       mcols = as.data.frame(norm_df[,norm_cols]),
+                       seqinfo = seqinfo)
+    names(mcols(regions)) <- gsub("mcols.", "", names(mcols(regions)))
+  }
+  
+  
+  #make interactions and InteractionSet, chr_A_end = 0 for intrachromosomal ints
+  
+  ints <- GInteractions(anchor1 = raw_df$bin_num1, anchor2 = raw_df$bin_num2+chr_A_end,
+                        regions = regions)
   iset <- InteractionSet(list(RAWobserved = as.matrix(raw_df$obs)), ints)
-
+  
   if (!is.null(exp_df)){
     exp_vecs <- names(exp_df)
     exp_vecs <- exp_vecs[-grep("distance", exp_vecs)]
@@ -201,7 +315,7 @@ make_is_from_data <- function(raw_df, norm_df, exp_df = NULL, chr, bin_size, seq
     } else{
       dists <- pairdist(ints)
       idx <- match(dists, exp_df$distance)
-
+      
       exp_list <- lapply(exp_vecs, function(exp){
         message("Calculating expected values for ", exp)
         as.matrix(exp_df[[exp]][idx])
@@ -229,22 +343,23 @@ make_is_from_data <- function(raw_df, norm_df, exp_df = NULL, chr, bin_size, seq
 normalise_hic <- function(iset, obs = "RAWobserved", norm = NULL){
   obs <- assays(iset)[[obs]]
   if (is.null(obs)){ stop("No observed data to normalise!")}
-
+  
   if (is.null(norm)){
     vecs <- names(mcols(regions(iset)))
     vecs <- vecs[grepl("norm", vecs)]
   } else {
     vecs <- norm
   }
-
+  
   if (length(vecs)==0) { stop("No normalisation vectors available!")}
   message("Using normalisation vectors: ", paste(vecs, collapse = ", "))
-
+  
   assay_list <- lapply(vecs, function(v){
     #message("Normalising using ", v)
     vec <- mcols(regions(iset))[[v]]
+    
     norm_assay <- obs / (vec[anchors(iset, type = "first", id = TRUE)] *
-      vec[anchors(iset, type = "second", id = TRUE)])
+                           vec[anchors(iset, type = "second", id = TRUE)])
   })
   names(assay_list) <- vecs
   assays(iset) <- c(assays(iset), assay_list)
