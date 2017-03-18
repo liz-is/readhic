@@ -364,6 +364,3 @@ normalise_hic <- function(iset, obs = "RAWobserved", norm = NULL){
   assays(iset) <- c(assays(iset), assay_list)
   return(iset)
 }
-
-inter_1_2_50kb <- read_rao_huntley_data_interchr(dir = "/home/kaj/Projects_data/nextgen_functional_genomics/GM12878_combined_interchromosomal/",
-                                                 resolution = "50kb",chr = c("chr1","chr2"), mapq=0)
