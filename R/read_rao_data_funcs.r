@@ -221,8 +221,8 @@ read_data_from_dir_interchr <- function(dir, bin_size, show_progress = TRUE){
   inter_norm_ixs <- grep("INTER",norm_files)
   if(length(inter_norm_ixs) > 0){
     norm_files <- norm_files[inter_norm_ixs]
-    message("Intrachromosomal normalization files found, using them!")
-  }
+    message("Interchromosomal normalization files found, using them!")
+  } else(stop("No interchromosomal normalization files found, stopping."))
   
   #read raw data
   raw_df <- read_tsv(rawfile, col_names = c("start1", "start2", "obs"),
@@ -233,8 +233,10 @@ read_data_from_dir_interchr <- function(dir, bin_size, show_progress = TRUE){
     read_tsv(f, col_names = col_name, col_types = "d", progress = show_progress)
   })
   ## stack norm vectors on top of each other and use later offset indexing to track which chr is it
-  KR = rbind(norm_list[[1]],norm_list[[3]])
-  VC = rbind(norm_list[[2]],norm_list[[4]])
+  KRix = grep("INTERKR",norm_files)
+  VCix = grep("INTERVC",norm_files)
+  KR = rbind(norm_list[[KRix[1]]],norm_list[[KRix[2]]])
+  VC = rbind(norm_list[[VCix[1]]],norm_list[[VCix[2]]])
   norm_df = bind_cols(KR,VC)
   
   # connect start positions with bin numbers to link raw / norm data for chrA and chrB
@@ -364,3 +366,6 @@ normalise_hic <- function(iset, obs = "RAWobserved", norm = NULL){
   assays(iset) <- c(assays(iset), assay_list)
   return(iset)
 }
+
+inter_1_2_50kb <- read_rao_huntley_data_interchr(dir = "/home/kaj/Projects_data/nextgen_functional_genomics/GM12878_combined_interchromosomal/",
+                                                 resolution = "50kb",chr = c("chr5","chr20"), mapq=0)
