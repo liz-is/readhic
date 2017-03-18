@@ -59,7 +59,6 @@ read_rao_huntley_data <- function(dir = ".", resolution = "1Mb", mapq = 30,
 
 #' Interchromosomal version of the main read function
 #' Doesn't support expected reads!
-
 #' @param dir Data directory containing subdirectories with different resolutions.
 #' Default: current working directory.
 #' @param resolution Resolution to read in, e.g. 1Mb, 10kb. Default: 1Mb.
@@ -202,7 +201,7 @@ read_data_from_dir <- function(dir, bin_size, read_expected = FALSE, show_progre
 #'
 #' @importFrom readr read_tsv
 #' @importFrom dplyr bind_cols left_join rename "%>%" data_frame
-#'
+#' @importFrom gtools mixedsort
 #' @export
 read_data_from_dir_interchr <- function(dir, bin_size, show_progress = TRUE){
   
