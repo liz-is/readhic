@@ -300,9 +300,9 @@ make_is_from_data <- function(raw_df, norm_df, exp_df = NULL, chr, bin_size, seq
   }
   
   
-  #make interactions and InteractionSet, chr_A_end = 0 for intrachromosomal ints
+  #make interactions and InteractionSet
   
-  ints <- GInteractions(anchor1 = raw_df$bin_num1, anchor2 = raw_df$bin_num2+chr_A_end,
+  ints <- GInteractions(anchor1 = raw_df$bin_num1, anchor2 = raw_df$bin_num2,
                         regions = regions)
   iset <- InteractionSet(list(RAWobserved = as.matrix(raw_df$obs)), ints)
   
