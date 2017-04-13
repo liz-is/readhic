@@ -19,15 +19,15 @@
 #'
 #' @export
 read_rao_huntley_data <- function(dir = ".", resolution = "1Mb", mapq = 30,
-                                  chr = "chr1",read_expected = FALSE, 
+                                  chr = "chr1",read_expected = FALSE,
                                   seqinfo = NULL, show_progress = TRUE){
   if (length(dir) != 1) {stop("Please provide a single data directory.")}
   if (length(resolution) > 1) {stop("Can only read in a single resolution at a time.")}
   if (length(mapq) > 1) {stop("Please choose a single mapq value.")}
-  
+
   bin_size <- get_bin_size(resolution)
   resolution <- paste0(resolution, "_resolution_intrachromosomal")
-  
+
   if (mapq == 0){
     mapq <- "MAPQG0"
   } else if (mapq == 30){
@@ -35,24 +35,24 @@ read_rao_huntley_data <- function(dir = ".", resolution = "1Mb", mapq = 30,
   } else {
     stop("MAPQ should be one of 0 or 30")
   }
-  
+
   message("Will read data for ", length(chr), " chromosomes.")
-  
+
   islist <- lapply(chr, function(chr){
     d <- paste(dir, resolution, chr, mapq, "/", sep = "/")
     df_list <- read_data_from_dir(dir = d, bin_size = bin_size,
                                   read_expected = read_expected,
                                   show_progress = show_progress)
-    
+
     iset <- make_is_from_data(raw_df = df_list$raw, norm_df = df_list$norm,
                               exp_df = df_list$exp,
                               chr, bin_size, seqinfo = seqinfo)
     return(iset)
   })
-  
+
   iset_all <- do.call("c", islist)
   return(iset_all)
-  
+
 }
 
 
@@ -74,7 +74,7 @@ read_rao_huntley_data_interchr <- function(dir = ".", resolution = "1Mb", mapq =
   chr = gtools::mixedsort(chr) ## makes sure the lower chr number is first
   bin_size <- get_bin_size(resolution)
   resolution <- paste0(resolution, "_resolution_interchromosomal")
-  
+
   if (mapq == 0){
     mapq <- "MAPQG0"
   } else if (mapq == 30){
@@ -82,18 +82,18 @@ read_rao_huntley_data_interchr <- function(dir = ".", resolution = "1Mb", mapq =
   } else {
     stop("MAPQ should be one of 0 or 30")
   }
-  
+
   message("Will read data for ", length(chr), " chromosomes.")
-  
+
   ### Read interchromosome data and create InteractionSet
   d <- paste(dir, resolution, paste0(chr,collapse="_"), mapq, "/", sep = "/")
   df_list <- read_data_from_dir_interchr(dir = d, bin_size = bin_size,
                                          show_progress = show_progress)
   iset_inter <- make_is_from_data(raw_df = df_list$raw, norm_df = df_list$norm,
                                   chr = chr, bin_size = bin_size, seqinfo = seqinfo, interchr = TRUE)
-  
+
   return(iset_inter)
-  
+
 }
 
 #' Get bin size from string resolution
@@ -139,41 +139,41 @@ get_bin_size <- function(res){
 read_data_from_dir <- function(dir, bin_size, read_expected = FALSE, show_progress = TRUE){
   message("Reading data from: ", dir)
   lf <- list.files(dir)
-  
+
   obs_idx <- grepl("RAWobserved", lf)
   norm_idx <- grepl("norm", lf)
   exp_idx <- grepl("expected", lf)
-  
+
   if (sum(obs_idx) > 1){stop("More than one 'RAWobserved' file found in this directory!")}
   if (sum(obs_idx) == 0){stop("No 'RAWobserved' file found in this directory!")}
-  
+
   rawfile <- paste0(dir, lf[obs_idx])
   norm_files <- paste0(dir, lf[norm_idx])
   exp_files <- paste0(dir, lf[exp_idx])
-  
+
   #read raw data
   raw_df <- read_tsv(rawfile, col_names = c("start1", "start2", "obs"),
                      col_types = "iid", progress = show_progress)
-  
+
   #read normalisation vectors
   norm_list <- lapply(norm_files, function(f){
     col_name <- strsplit(basename(f), "\\.")[[1]][2]
     read_tsv(f, col_names = col_name, col_types = "d", progress = show_progress)
   })
   norm_df <- bind_cols(norm_list)
-  
+
   # connect start positions with bin numbers to link raw / norm data
   bin_df <- data_frame(bin_start = seq(from = 0, by = bin_size, length.out = nrow(norm_df)),
                        bin_num = seq_along(bin_start))
-  
+
   raw_df <- raw_df %>%
     left_join(bin_df, by = c("start1" = "bin_start")) %>%
     dplyr::rename(bin_num1 = bin_num) %>%
     left_join(bin_df, by = c("start2" = "bin_start")) %>%
     dplyr::rename(bin_num2 = bin_num)
-  
+
   norm_df <- bind_cols(bin_df, norm_df)
-  
+
   if (read_expected){
     exp_list <- lapply(exp_files, function(f){
       col_name <- strsplit(basename(f), "\\.")[[1]][2]
@@ -184,7 +184,7 @@ read_data_from_dir <- function(dir, bin_size, read_expected = FALSE, show_progre
   } else {
     exp_df <- NULL
   }
-  
+
   return(list(raw = raw_df, norm = norm_df, exp = exp_df))
 }
 
@@ -203,26 +203,26 @@ read_data_from_dir <- function(dir, bin_size, read_expected = FALSE, show_progre
 #' @importFrom gtools mixedsort
 #' @export
 read_data_from_dir_interchr <- function(dir, bin_size, show_progress = TRUE){
-  
+
   message("Reading data from: ", dir)
   lf <- list.files(dir)
-  
+
   obs_idx <- grepl("RAWobserved", lf)
   norm_idx <- grepl("norm", lf)
-  
+
   if (sum(obs_idx) > 1){stop("More than one 'RAWobserved' file found in this directory!")}
   if (sum(obs_idx) == 0){stop("No 'RAWobserved' file found in this directory!")}
-  
+
   rawfile <- paste0(dir, lf[obs_idx])
   norm_files <- paste0(dir, lf[norm_idx])
   norm_files <- gtools::mixedsort(norm_files) ## sort so chrA is always above chrB
   ## if interchromosomal normalization vectors available, use them
-  inter_norm_ixs <- grep("INTER",norm_files)
-  if(length(inter_norm_ixs) > 0){
-    norm_files <- norm_files[inter_norm_ixs]
-    message("Interchromosomal normalization files found, using them!")
-  } else(stop("No interchromosomal normalization files found, stopping."))
-  
+  norm_ixs <- grep("norm",norm_files)
+  if(length(norm_ixs) > 0){
+    norm_files <- norm_files[norm_ixs]
+    message("Normalization files found!")
+  } else(stop("No normalization files found, stopping."))
+
   #read raw data
   raw_df <- read_tsv(rawfile, col_names = c("start1", "start2", "obs"),
                      col_types = "iid", progress = show_progress)
@@ -231,17 +231,30 @@ read_data_from_dir_interchr <- function(dir, bin_size, show_progress = TRUE){
     col_name <- strsplit(basename(f), "\\.")[[1]][2]
     read_tsv(f, col_names = col_name, col_types = "d", progress = show_progress)
   })
-  ## stack norm vectors on top of each other and use later offset indexing to track which chr is it
-  KRix = grep("INTERKR",norm_files)
-  VCix = grep("INTERVC",norm_files)
+  ## stack norm vectors on top of each other and use later offset indexing to track which chr it is
+  INTERKRix = grep("INTERKRnorm",norm_files,fixed=T)
+  INTERVCix = grep("INTERVCnorm",norm_files)
+  GWKRix = grep("GWKRnorm",norm_files)
+  GWVCix = grep("GWVCnorm",norm_files)
+  KRix = grep(".KRnorm",norm_files,fixed=T)
+  SQRTVCix = grep("SQRTVCnorm",norm_files)
+  VCix = grep(".VCnorm",norm_files,fixed=T)
+  
+  INTERKR = rbind(norm_list[[INTERKRix[1]]],norm_list[[INTERKRix[2]]])
+  INTERVC = rbind(norm_list[[INTERVCix[1]]],norm_list[[INTERVCix[2]]])
+  GWKR = rbind(norm_list[[GWKRix[1]]],norm_list[[GWKRix[2]]])
+  GWVC = rbind(norm_list[[GWVCix[1]]],norm_list[[GWVCix[2]]])
   KR = rbind(norm_list[[KRix[1]]],norm_list[[KRix[2]]])
+  SQRTVC = rbind(norm_list[[SQRTVCix[1]]],norm_list[[SQRTVCix[2]]])
   VC = rbind(norm_list[[VCix[1]]],norm_list[[VCix[2]]])
-  norm_df = bind_cols(KR,VC)
+  
+  #norm_df = bind_cols(INTERKR,INTERVC,GWKR,GWVC,KR,SQRTVC,VC)
+  norm_df = bind_cols(INTERKR,INTERVC,GWKR,GWVC)
   
   # connect start positions with bin numbers to link raw / norm data for chrA and chrB
-  bin_df_A <- data_frame(bin_start = seq(from = 0, by = bin_size, length.out = nrow(norm_list[[1]])),
+  bin_df_A <- data_frame(bin_start = seq(from = 0, by = bin_size, length.out = nrow(norm_list[[INTERKRix[1]]])),
                          bin_num = seq_along(bin_start))
-  bin_df_B <- data_frame(bin_start = seq(from = 0, by = bin_size, length.out = nrow(norm_list[[3]])),
+  bin_df_B <- data_frame(bin_start = seq(from = 0, by = bin_size, length.out = nrow(norm_list[[INTERKRix[2]]])),
                          bin_num = seq_along(bin_start))
   bin_df <- rbind(bin_df_A,bin_df_B)
   raw_df <- raw_df %>%
@@ -249,10 +262,10 @@ read_data_from_dir_interchr <- function(dir, bin_size, show_progress = TRUE){
     dplyr::rename(bin_num1 = bin_num) %>%
     left_join(bin_df_B, by = c("start2" = "bin_start")) %>%
     dplyr::rename(bin_num2 = bin_num)
-  
+
   chr_col <- data.frame("Source"=c(rep("chrA",nrow(bin_df_A)),rep("chrB",nrow(bin_df_B)))) #to keep track of which bins belong where
   norm_df <- bind_cols(bin_df, norm_df, chr_col)
-  
+
   return(list(raw = raw_df, norm = norm_df))
 }
 
@@ -298,14 +311,14 @@ make_is_from_data <- function(raw_df, norm_df, exp_df = NULL, chr, bin_size, seq
                        seqinfo = seqinfo)
     names(mcols(regions)) <- gsub("mcols.", "", names(mcols(regions)))
   }
-  
-  
-  #make interactions and InteractionSet
-  
-  ints <- GInteractions(anchor1 = raw_df$bin_num1, anchor2 = raw_df$bin_num2,
+
+
+  #make interactions and InteractionSet, chr_A_end = 0 for intrachromosomal ints
+
+  ints <- GInteractions(anchor1 = raw_df$bin_num1, anchor2 = raw_df$bin_num2+chr_A_end,
                         regions = regions)
-  iset <- InteractionSet(list(RAWobserved = as.matrix(raw_df$obs)), ints)
   
+  iset <- InteractionSet(list(RAWobserved = as.matrix(raw_df$obs)), ints)
   if (!is.null(exp_df)){
     exp_vecs <- names(exp_df)
     exp_vecs <- exp_vecs[-grep("distance", exp_vecs)]
@@ -314,7 +327,7 @@ make_is_from_data <- function(raw_df, norm_df, exp_df = NULL, chr, bin_size, seq
     } else{
       dists <- pairdist(ints)
       idx <- match(dists, exp_df$distance)
-      
+
       exp_list <- lapply(exp_vecs, function(exp){
         message("Calculating expected values for ", exp)
         as.matrix(exp_df[[exp]][idx])
@@ -342,21 +355,21 @@ make_is_from_data <- function(raw_df, norm_df, exp_df = NULL, chr, bin_size, seq
 normalise_hic <- function(iset, obs = "RAWobserved", norm = NULL){
   obs <- assays(iset)[[obs]]
   if (is.null(obs)){ stop("No observed data to normalise!")}
-  
+
   if (is.null(norm)){
     vecs <- names(mcols(regions(iset)))
     vecs <- vecs[grepl("norm", vecs)]
   } else {
     vecs <- norm
   }
-  
+
   if (length(vecs)==0) { stop("No normalisation vectors available!")}
   message("Using normalisation vectors: ", paste(vecs, collapse = ", "))
-  
+
   assay_list <- lapply(vecs, function(v){
     #message("Normalising using ", v)
     vec <- mcols(regions(iset))[[v]]
-    
+
     norm_assay <- obs / (vec[anchors(iset, type = "first", id = TRUE)] *
                            vec[anchors(iset, type = "second", id = TRUE)])
   })
