@@ -11,6 +11,8 @@ observed and expected data stored as `assays`. See the
 and [GenomicInteractions](http://www.bioconductor.org/packages/release/bioc/html/GenomicInteractions.html) 
 packages for more information and useful functions for manipulating these objects.
 
+Note: for interchromosomal contacts use the function "read_rao_huntley_data_interchr"
+
 ## Example usage
 
 ```
