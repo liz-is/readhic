@@ -4,9 +4,8 @@ Functions to read and process HiC contact matrices and normalisation vectors
 from Rao, Huntley et al 2014, as provided [on GEO](http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525). 
 
 You can specify the location of the data, the resolution to read in (as a string), 
-and the chromosomes to read in. Currently only intra-chromosomal interactions 
-are supported. You can also specify whether you wish to read in data corresponding 
-to expected interactions. Data is returned as an InteractionSet object, with 
+and the chromosomes to read in. You can also specify whether you wish to read in data corresponding 
+to expected interactions (if available). Data is returned as an InteractionSet object, with 
 observed and expected data stored as `assays`. See the
 [InteractionSet](http://www.bioconductor.org/packages/release/bioc/html/InteractionSet.html) 
 and [GenomicInteractions](http://www.bioconductor.org/packages/release/bioc/html/GenomicInteractions.html) 
