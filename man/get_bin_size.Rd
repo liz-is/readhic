@@ -16,4 +16,3 @@ numeric bin size
 Get bin size in numeric base pairs from string resolution. Mb, kb, or bp
 are supported.
 }
-
